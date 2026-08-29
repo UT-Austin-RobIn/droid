@@ -1,0 +1,292 @@
+# ruff: noqa
+
+import contextlib
+import dataclasses
+import datetime
+import faulthandler
+import os
+import signal
+import time
+from moviepy.editor import ImageSequenceClip
+import numpy as np
+from openpi_client import image_tools
+from openpi_client import websocket_client_policy
+import pandas as pd
+from PIL import Image
+from droid.robot_env import RobotEnv
+import tqdm
+import tyro
+from typing import Optional, List
+from pathlib import Path
+faulthandler.enable()
+
+# == OopsieData project specific ==
+from oopsie_data_tools.annotation_tool.rollout_annotator import WebRolloutAnnotator
+from oopsie_data_tools.utils.robot_profile.robot_profile import *
+
+# DROID data collection frequency -- we slow down execution to match this frequency
+DROID_CONTROL_FREQUENCY = 15
+
+
+@dataclasses.dataclass
+class Args:
+    # Hardware parameters
+    left_camera_id: str = "39406856"  # e.g., "24259877"
+    right_camera_id: str = "36088355"  # e.g., "24514023"
+    wrist_camera_id: str = "17651206"  # e.g., "13062452"
+
+    # Policy parameters
+    external_camera: Optional[str] = None
+
+    # Rollout parameters
+    max_timesteps: int = 50
+    # How many actions to execute from a predicted actionk chunk before querying policy server again
+    # 8 is usually a good default (equals 0.5 seconds of action execution).
+    open_loop_horizon: int = 8
+
+    # Remote server parameters
+    remote_host: str = "0.0.0.0"  # point this to the IP address of the policy server, e.g., "192.168.1.100"
+    remote_port: int = (
+        8000  # point this to the port of the policy server, default server port for openpi servers is 8000
+    )
+
+    # == OopsieData project specific ==
+    data_root_dir: Path = Path("./data")  # annotation tool reads MP4s and JSON from here    
+    resume_session_name: str = None
+    annotator_port: int = 5003
+    wait_for_annotation: bool = True  # block until browser annotation is submitted
+
+    operator_name: str = "arpit"
+    annotator_name: str = "claas"
+    
+
+
+# We are using Ctrl+C to optionally terminate rollouts early -- however, if we press Ctrl+C while the policy server is
+# waiting for a new action chunk, it will raise an exception and the server connection dies.
+# This context manager temporarily prevents Ctrl+C and delays it after the server call is complete.
+@contextlib.contextmanager
+def prevent_keyboard_interrupt():
+    """Temporarily prevent keyboard interrupts by delaying them until after the protected code."""
+    interrupted = False
+    original_handler = signal.getsignal(signal.SIGINT)
+
+    def handler(signum, frame):
+        nonlocal interrupted
+        interrupted = True
+
+    signal.signal(signal.SIGINT, handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, original_handler)
+        if interrupted:
+            raise KeyboardInterrupt
+
+
+def main(args: Args):
+    # Make sure external camera is specified by user -- we only use one external camera for the policy
+    assert (
+        args.external_camera is not None and args.external_camera in ["left", "right"]
+    ), f"Please specify an external camera to use for the policy, choose from ['left', 'right'], but got {args.external_camera}"
+
+    # Initialize the Panda environment. Using joint velocity action space and gripper position action space is very important.
+    env = RobotEnv(action_space="joint_velocity", gripper_action_space="position")
+    print("Created the droid env!")
+
+    # Connect to the policy server
+    policy_client = websocket_client_policy.WebsocketClientPolicy(args.remote_host, args.remote_port)
+
+    df = pd.DataFrame(columns=["success", "duration", "video_filename"])
+
+    # OopsieData project specific
+    robot_profile = load_robot_profile("/app/robot_profiles/robot_profile.yaml")
+    rollout_annotator = WebRolloutAnnotator(
+        robot_profile=robot_profile,
+        data_root_dir=args.data_root_dir,
+        port=args.annotator_port,
+        wait_for_annotation=args.wait_for_annotation,   # TODO: Check if this is needed
+        resume_session_name=args.resume_session_name,
+        operator_name=args.operator_name,
+        # annotator_name=args.annotator_name,
+    )
+    rollout_annotator.start()
+
+    while True:
+        # instruction = input("Enter instruction: ")
+        instruction = rollout_annotator.wait_for_task()
+
+        # Rollout parameters
+        actions_from_chunk_completed = 0
+        pred_action_chunk = None
+
+        rollout_annotator.reset_episode_recorder()
+
+        # Prepare to save video of rollout
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        videos: dict[str, list[np.ndarray]] = {cam: [] for cam in robot_profile.camera_names}
+        bar = tqdm.tqdm(range(args.max_timesteps))
+        print("Running rollout... press Ctrl+C to stop early.")
+        for t_step in bar:
+            start_time = time.time()
+            try:
+                # Get the current observation
+                curr_obs = _extract_observation(
+                    args,
+                    env.get_observation(),
+                    # Save the first observation to disk
+                    save_to_disk=t_step == 0,
+                )
+
+                for cam in robot_profile.camera_names:
+                    videos[cam].append(curr_obs[f"{cam}_image"])
+
+                # Send websocket request to policy server if it's time to predict a new chunk
+                if actions_from_chunk_completed == 0 or actions_from_chunk_completed >= args.open_loop_horizon:
+                    actions_from_chunk_completed = 0
+
+                    # We resize images on the robot laptop to minimize the amount of data sent to the policy server
+                    # and improve latency.
+                    request_data = {
+                        "observation/exterior_image_1_left": image_tools.resize_with_pad(
+                            curr_obs[f"{args.external_camera}_image"], 224, 224
+                        ),
+                        "observation/wrist_image_left": image_tools.resize_with_pad(curr_obs["wrist_image"], 224, 224),
+                        "observation/joint_position": curr_obs["joint_position"],
+                        "observation/gripper_position": curr_obs["gripper_position"],
+                        "prompt": instruction,
+                    }
+
+                    # Wrap the server call in a context manager to prevent Ctrl+C from interrupting it
+                    # Ctrl+C will be handled after the server call is complete
+                    with prevent_keyboard_interrupt():
+                        # this returns action chunk [10, 8] of 10 joint velocity actions (7) + gripper position (1)
+                        pred_action_chunk = policy_client.infer(request_data)["actions"]
+                        print(pred_action_chunk.shape)
+                    # assert pred_action_chunk.shape == (10, 8)
+
+                # Select current action to execute from chunk
+                action = pred_action_chunk[actions_from_chunk_completed]
+                actions_from_chunk_completed += 1
+
+                # Binarize gripper action
+                if action[-1].item() > 0.5:
+                    # action[-1] = 1.0
+                    action = np.concatenate([action[:-1], np.ones((1,))])
+                else:
+                    # action[-1] = 0.0
+                    action = np.concatenate([action[:-1], np.zeros((1,))])
+
+                # clip all dimensions of action to [-1, 1]
+                action = np.clip(action, -1, 1)
+
+                env.step(action)
+
+                # == failure_data project specific ==
+                # Added to record the step
+                rollout_annotator.record_step(
+                    observation={
+                        "image_observation": {
+                            "left": curr_obs["left_image"],
+                            "right": curr_obs["right_image"],
+                            "wrist": curr_obs["wrist_image"],
+                        },
+                        "robot_state": {
+                            "cartesian_position": curr_obs["cartesian_position"],
+                            "joint_position": curr_obs["joint_position"],
+                            "gripper_position": curr_obs["gripper_position"],
+                        },
+                    },
+                    action={
+                        "joint_velocity": action[:-1],
+                        "gripper_binary": action[-1],
+                    },
+                )
+
+                # Sleep to match DROID data collection frequency
+                elapsed_time = time.time() - start_time
+                if elapsed_time < 1 / DROID_CONTROL_FREQUENCY:
+                    time.sleep(1 / DROID_CONTROL_FREQUENCY - elapsed_time)
+            except KeyboardInterrupt:
+                break
+
+        rollout_annotator.finish_rollout(instruction=instruction)
+        
+        # df = df.append(
+        #     {
+        #         "success": success,
+        #         "duration": t_step,
+        #         "video_filename": save_filename,
+        #     },
+        #     ignore_index=True,
+        # )
+        # # New row as a DataFrame
+        # new_row = pd.DataFrame([{
+        #     "success": success,
+        #     "duration": t_step,
+        #     "video_filename": save_filename,
+        # }])
+        # df = pd.concat([df, new_row], ignore_index=True)
+
+        if input("Do one more eval? (enter y or n) ").lower() != "y":
+            break
+        env.reset()
+
+    os.makedirs("results", exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%I:%M%p_%B_%d_%Y")
+    csv_filename = os.path.join("results", f"eval_{timestamp}.csv")
+    df.to_csv(csv_filename)
+    print(f"Results saved to {csv_filename}")
+
+
+def _extract_observation(args: Args, obs_dict, *, save_to_disk=False):
+    image_observations = obs_dict["image"]
+    left_image, right_image, wrist_image = None, None, None
+    for key in image_observations:
+        # Note the "left" below refers to the left camera in the stereo pair.
+        # The model is only trained on left stereo cams, so we only feed those.
+        if args.left_camera_id in key and "left" in key:
+            left_image = image_observations[key]
+        elif args.right_camera_id in key and "left" in key:
+            right_image = image_observations[key]
+        elif args.wrist_camera_id in key and "left" in key:
+            wrist_image = image_observations[key]
+
+    # # FIXME: Temporary fix. Remove later
+    right_image = left_image
+
+    # Drop the alpha dimension
+    left_image = left_image[..., :3]
+    right_image = right_image[..., :3]
+    wrist_image = wrist_image[..., :3]
+
+    # Convert to RGB
+    left_image = left_image[..., ::-1]
+    right_image = right_image[..., ::-1]
+    wrist_image = wrist_image[..., ::-1]
+
+    # In addition to image observations, also capture the proprioceptive state
+    robot_state = obs_dict["robot_state"]
+    cartesian_position = np.array(robot_state["cartesian_position"])
+    joint_position = np.array(robot_state["joint_positions"])
+    gripper_position = np.array([robot_state["gripper_position"]])
+
+    # Save the images to disk so that they can be viewed live while the robot is running
+    # Create one combined image to make live viewing easy
+    if save_to_disk:
+        combined_image = np.concatenate([left_image, wrist_image, right_image], axis=1)
+        combined_image = Image.fromarray(combined_image)
+        combined_image.save("robot_camera_views.png")
+
+    return {
+        "left_image": left_image,
+        "right_image": right_image,
+        "wrist_image": wrist_image,
+        "cartesian_position": cartesian_position,
+        "joint_position": joint_position,
+        "gripper_position": gripper_position,
+    }
+
+
+if __name__ == "__main__":
+    args: Args = tyro.cli(Args)
+    main(args)

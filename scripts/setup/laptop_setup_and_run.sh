@@ -159,7 +159,7 @@ read -p "Do you want to rebuild the container image? (yes/no): " first_time
 
 if [ "$first_time" = "yes" ]; then
 	echo -e "build control server container \n"
-	cd $DOCKER_COMPOSE_DIR && docker compose -f $DOCKER_COMPOSE_FILE build --no-cache
+	cd $DOCKER_COMPOSE_DIR && docker compose -f $DOCKER_COMPOSE_FILE build --progress plain --no-cache
 fi
 
 # find ethernet interface on device
@@ -209,4 +209,20 @@ while ! confirm_devices; do
 done
 
 echo -e "run client application \n"
-docker compose -f $DOCKER_COMPOSE_FILE up # -d
+# docker compose -f $DOCKER_COMPOSE_FILE down
+
+# Stop and clean any previous instance
+docker compose -f $DOCKER_COMPOSE_FILE down
+
+docker ps -a --filter "name=${USER}_laptop_setup" --format "{{.ID}}" | xargs -r docker rm -f
+
+
+# Rebuild with all runtime config (including shm_size)
+docker compose -f $DOCKER_COMPOSE_FILE up -d
+#docker compose -f docker-compose-laptop.yaml run laptop_setup python scripts/test/collect_trajectory.py
+
+
+
+
+# docker start laptop_setup-1
+# docker exec -it laptop_setup-1 bash

@@ -10,7 +10,10 @@ def attempt_n_times(function_list, max_attempts, sleep_time=0.1):
 
     for i in range(max_attempts):
         try:
-            [f() for f in function_list]
+            # [f() for f in function_list]
+            for i, f in enumerate(function_list):
+                f()
+                print(i)
             return
         except zerorpc.exceptions.RemoteError as err:
             last_attempt = i == (max_attempts - 1)
@@ -24,6 +27,7 @@ class ServerInterface:
     def __init__(self, ip_address="127.0.0.1", launch=True):
         self.ip_address = ip_address
         self.establish_connection()
+        print("Connected to server at", self.ip_address)
 
         if launch:
             func_list = [self.launch_controller, self.launch_robot]
@@ -34,9 +38,11 @@ class ServerInterface:
         self.server.connect("tcp://" + self.ip_address + ":4242")
 
     def launch_controller(self):
+        print("Launching controller")
         self.server.launch_controller()
 
     def launch_robot(self):
+        print("Launching robot")
         self.server.launch_robot()
 
     def kill_controller(self):

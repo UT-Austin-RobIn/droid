@@ -42,6 +42,8 @@ class VRPolicy:
         self.reset_orientation = True
         self.reset_state()
 
+        print("Occulus Reader Initialized")
+
         # Start State Listening Thread #
         run_threaded_command(self._update_internal_state)
 
@@ -106,6 +108,11 @@ class VRPolicy:
         vr_quat = rmat_to_quat(rot_mat[:3, :3])
         vr_gripper = self._state["buttons"]["rightTrig" if self.controller_id == "r" else "leftTrig"][0]
 
+        print("Getting VR state")
+        print(f"vr_pos: {vr_pos}")
+        print(f"vr_quat: {vr_quat}")
+        print(f"vr_gripper: {vr_gripper}")
+
         self.vr_state = {"pos": vr_pos, "quat": vr_quat, "gripper": vr_gripper}
 
     def _limit_velocity(self, lin_vel, rot_vel, gripper_vel):
@@ -123,6 +130,7 @@ class VRPolicy:
 
     def _calculate_action(self, state_dict, include_info=False):
         # Read Sensor #
+        print("Reading Sensor")
         if self.update_sensor:
             self._process_reading()
             self.update_sensor = False

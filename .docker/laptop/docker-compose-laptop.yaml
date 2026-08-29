@@ -3,6 +3,9 @@ version: "3"
 services: 
   laptop_setup:
     image: ghcr.io/droid-dataset/droid_laptop:${ROBOT_TYPE}
+    shm_size: 4g
+    tty: true
+    stdin_open: true
     environment:
       ROOT_DIR: ${ROOT_DIR}
       DISPLAY: ${DISPLAY}
@@ -15,23 +18,30 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
     volumes:
+      - /dev:/dev
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${DOCKER_XAUTH}:${DOCKER_XAUTH}
-      - ${ROOT_DIR}/droid/misc/parameters.py:/app/droid/misc/parameters.py
-      - ${ROOT_DIR}/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
+      - ${ROOT_DIR}/droid:/app/droid
+      - ${ROOT_DIR}/scripts:/app/scripts
+      # - ${ROOT_DIR}/droid/misc/parameters.py:/app/droid/misc/parameters.py
+      # - ${ROOT_DIR}/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
       - ${ROOT_DIR}/data:/app/data
       - ${ROOT_DIR}/cache:/app/cache
+      - /home/robin/workspace/openpi:/app/openpi
+      - /home/robin/workspace/DROID_setup/roboarena_sim_bench/:/app/roboarena_sim_bench
+      - /home/robin/workspace/robotic_failure_data:/app/robotic_failure_data
+      - /home/robin/workspace/oopsie-tools:/app/oopsie-tools
     build: 
       context: ../../
-      dockerfile: .docker/laptop/Dockerfile.laptop
+      dockerfile: .docker/laptop/Dockerfile.test_laptop
       args:
         ROOT_DIR: ${ROOT_DIR}
         ROBOT_TYPE: ${ROBOT_TYPE}
         NUC_IP: ${NUC_IP}
         ROBOT_IP: ${ROBOT_IP}
     devices:
-      - "/dev:/dev"
+      - /dev/bus/usb:/dev/bus/usb
     runtime: nvidia
     privileged: true
     network_mode: "host"
-    command: python /app/scripts/main.py
+    command: bash #python /app/scripts/main.py

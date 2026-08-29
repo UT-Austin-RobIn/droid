@@ -29,7 +29,7 @@ def gather_zed_cameras():
 resize_func_map = {"cv2": cv2.resize, None: None}
 
 standard_params = dict(
-    depth_minimum_distance=0.1, camera_resolution=sl.RESOLUTION.HD720, depth_stabilization=False, camera_fps=60, camera_image_flip=sl.FLIP_MODE.OFF
+    depth_minimum_distance=0.1, camera_resolution=sl.RESOLUTION.HD720, depth_stabilization=False, camera_fps=30, camera_image_flip=sl.FLIP_MODE.OFF
 )
 
 advanced_params = dict(
@@ -132,7 +132,11 @@ class ZedCamera:
         sl_params = sl.InitParameters(**init_params)
         sl_params.set_from_serial_number(int(self.serial_number))
         sl_params.camera_image_flip = sl.FLIP_MODE.OFF
+        sl_params.open_timeout_sec = 10
         status = self._cam.open(sl_params)
+
+    
+
         if status != sl.ERROR_CODE.SUCCESS:
             raise RuntimeError("Camera Failed To Open")
 

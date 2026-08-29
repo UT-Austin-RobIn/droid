@@ -92,7 +92,7 @@ def run_indexing(
                     totals["errored"][outcome] = len(errored_paths[outcome])
                     progress.update()
                     continue
-
+               # import pdb; pdb.set_trace()
                 # Verify SVO Files
                 if not validate_svo_existence(trajectory_dir):
                     scanned_paths[outcome][rel_trajectory_dir] = True
