@@ -20,3 +20,11 @@ This guide has been used to set up 18 DROID robot platforms over the course of t
 3. [Example Workflows to collect data or calibrate cameras](https://droid-dataset.github.io/droid/docs/example-workflows)
 
 If you encounter issues during setup, please raise them as issues in this github repo.
+
+## RobIn Specific
+
+Setup docs for the UT Austin RobIn DROID stack:
+
+- [Plato (laptop)](docs/robin/plato.md) — Docker container, OpenPI server, daily workflows
+- [NUC](docs/robin/nuc.md) — Robot control, gripper, Polymetis
+- [Troubleshooting & tips](docs/robin/troubleshooting.md) — Common errors, docker image saving, misc fixes

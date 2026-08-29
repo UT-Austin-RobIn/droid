@@ -2,6 +2,7 @@ version: "3"
 
 services: 
   laptop_setup:
+    container_name: semantic-corrections
     image: ghcr.io/droid-dataset/droid_laptop:${ROBOT_TYPE}
     shm_size: 4g
     tty: true
@@ -23,12 +24,10 @@ services:
       - ${DOCKER_XAUTH}:${DOCKER_XAUTH}
       - ${ROOT_DIR}/droid:/app/droid
       - ${ROOT_DIR}/scripts:/app/scripts
-      # - ${ROOT_DIR}/droid/misc/parameters.py:/app/droid/misc/parameters.py
-      # - ${ROOT_DIR}/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
       - ${ROOT_DIR}/data:/app/data
       - ${ROOT_DIR}/cache:/app/cache
       - /home/robin/workspace/openpi:/app/openpi
-      - /home/robin/workspace/DROID_setup/roboarena_sim_bench/:/app/roboarena_sim_bench
+      - /home/robin/workspace/arpit/semantic_corrections:/app/semantic_corrections
       - /home/robin/workspace/robotic_failure_data:/app/robotic_failure_data
       - /home/robin/workspace/oopsie-tools:/app/oopsie-tools
     build: 

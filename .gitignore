@@ -9,5 +9,6 @@ cache/
 notes.txt
 test_script.sh
 .docker/laptop/variables.sh
-parameters.py
+droid/misc/parameters.py
+
 

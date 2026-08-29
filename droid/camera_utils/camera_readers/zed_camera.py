@@ -29,7 +29,12 @@ def gather_zed_cameras():
 resize_func_map = {"cv2": cv2.resize, None: None}
 
 standard_params = dict(
-    depth_minimum_distance=0.1, camera_resolution=sl.RESOLUTION.HD720, depth_stabilization=False, camera_fps=30, camera_image_flip=sl.FLIP_MODE.OFF
+    depth_minimum_distance=0.1,
+    camera_resolution=sl.RESOLUTION.HD720,
+    depth_stabilization=False,
+    camera_fps=30,
+    camera_image_flip=sl.FLIP_MODE.OFF,
+    depth_mode=sl.DEPTH_MODE.PERFORMANCE,
 )
 
 advanced_params = dict(
