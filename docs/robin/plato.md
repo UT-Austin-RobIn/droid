@@ -19,14 +19,14 @@ If you see a docker container running:
 ```bash
 (openpi) robin@robin-plato:~/workspace/DROID_setup/droid$ docker ps
 CONTAINER ID   IMAGE                                      COMMAND                  CREATED        STATUSPORTS     NAMES
-59c43770d4aa   ghcr.io/droid-dataset/droid_laptop:panda   "/app/.docker/laptop…"   23 hours ago   Up 2 minutes          laptop-laptop_setup-1
+/droid_laptop:panda   "/app/.docker/laptop…"   17 minutes ago   Exited (137) 3 minutes ago             semantic-corrections
 ```
 
 Then attach:
 
 ```bash
-cd /home/robin/workspace/arpit/droid/.docker/laptop/
-source variable.sh
+cd /home/robin/workspace/arpit/droid/
+source .docker/laptop/variables.sh
 docker compose -f .docker/laptop/docker-compose-laptop.yaml exec laptop_setup bash
 ```
 
@@ -43,7 +43,7 @@ CONTAINER ID   IMAGE                                      COMMAND               
 Then restart it:
 
 ```bash
-cd /home/robin/workspace/arpit/droid/.docker/laptop/
+cd /home/robin/workspace/arpit/droid/
 source .docker/laptop/variables.sh
 docker compose -f .docker/laptop/docker-compose-laptop.yaml start
 docker exec -it semantic-corrections bash
@@ -65,6 +65,14 @@ Use when starting from scratch, changing mounts/env in compose, fixing networkin
 sudo ./scripts/setup/laptop_setup.sh
 ```
 
+### Option 4: Restart a running container
+```bash
+cd /home/robin/workspace/arpit/droid/
+source .docker/laptop/variables.sh
+docker compose -f .docker/laptop/docker-compose-laptop.yaml restart
+docker exec -it semantic-corrections bash
+```
+
 ## Step 2: Start openpi server
 
 In a different terminal:
@@ -73,9 +81,17 @@ In a different terminal:
 (base) robin@robin-plato:~/workspace/openpi$ uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_droid --policy.dir=gs://openpi-assets/checkpoints/pi05_droid
 ```
 
-## Step 3
+## Step 3 (Installing libraries required for Openpi - do it only once, unless you are recreating the container.)
 
-[TODO]
+1. conda init
+2. source ~/.bashrc
+3. conda activate robot
+4. export OPENPI_ROOT=/app/openpi
+5. cd $OPENPI_ROOT/packages/openpi-client && pip install -e .
+6. pip install tyro ; pip install moviepy
+7. cd /app/oopsie-tools && pip install -e .
+8. cd /app
+8. (Pi0 client) python scripts/run_openpi.py --remote_host=0.0.0.0 --remote_port=8000 --external_camera="left"
 
 ## Notes
 
