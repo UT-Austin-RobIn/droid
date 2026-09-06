@@ -17,7 +17,7 @@ services:
       ROBOT_IP: ${ROBOT_IP}
       LAPTOP_IP: ${LAPTOP_IP}
       NVIDIA_VISIBLE_DEVICES: all
-      ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
+      ANDROID_ADB_SERVER_ADDRESS: 127.0.0.1
     volumes:
       - /dev:/dev
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
@@ -28,6 +28,9 @@ services:
       - ${ROOT_DIR}/cache:/app/cache
       - /home/robin/workspace/openpi:/app/openpi
       - /home/robin/workspace/arpit/semantic_corrections:/app/semantic_corrections
+      # XMem checkout + saves/XMem.pth for real_world/scripts/track_keypoints_zed.py.
+      # /app/XMem is exactly xmem_tracker.py's default root, so no override flags.
+      - /home/robin/workspace/arpit/XMem:/app/XMem
       - /home/robin/workspace/robotic_failure_data:/app/robotic_failure_data
       - /home/robin/workspace/oopsie-tools:/app/oopsie-tools
     build: 

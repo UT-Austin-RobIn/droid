@@ -25,7 +25,7 @@ Then attach to the container.
 ## Start robot + gripper (inside container)
 
 1. `conda activate polymetis_local`
-2. `launch_robot.py robot_client=franka_hardware`
+2. `launch_robot.py robot_client=franka_hardware` or `bash /app/droid/franka/launch_robot.sh`
 3. `bash /app/droid/franka/launch_gripper.sh`
 
 To stop the container:
