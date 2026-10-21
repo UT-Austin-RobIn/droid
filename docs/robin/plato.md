@@ -43,9 +43,9 @@ CONTAINER ID   IMAGE                                      COMMAND               
 Then restart it:
 
 ```bash
-cd /home/robin/workspace/arpit/droid/
-source .docker/laptop/variables.sh
-docker compose -f .docker/laptop/docker-compose-laptop.yaml start
+cd /home/robin/workspace/arpit/droid/.docker/laptop
+source variables.sh
+docker compose -f docker-compose-laptop.yaml start
 docker exec -it semantic-corrections bash
 ```
 
@@ -71,6 +71,15 @@ cd /home/robin/workspace/arpit/droid/
 source .docker/laptop/variables.sh
 docker compose -f .docker/laptop/docker-compose-laptop.yaml restart
 docker exec -it semantic-corrections bash
+```
+
+### Writing an image that can be loaded later
+```bash
+/home/robin/workspace/arpit/droid/scripts/docker/container_snapshot.sh snapshot [container name] [tag name] # commit running container -> image + restore script
+# Image is saved at and restore script at ~/.droid_snapshots/restore-<tag>.sh
+./container_snapshot.sh restore [TAG]     # recreate it (defaults to newest snapshot)
+./container_snapshot.sh list
+./container_snapshot.sh export TAG        # .tar.gz for another machine
 ```
 
 ## Step 2: Start openpi server

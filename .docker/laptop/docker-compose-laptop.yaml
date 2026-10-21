@@ -3,7 +3,7 @@ version: "3"
 services: 
   laptop_setup:
     container_name: semantic-corrections
-    image: ghcr.io/droid-dataset/droid_laptop:${ROBOT_TYPE}
+    image: ghcr.io/droid-dataset/droid_laptop:${ROBOT_TYPE} # use for the locally saved image: droid_laptop_snapshot:oopsierecover-icra
     shm_size: 4g
     tty: true
     stdin_open: true

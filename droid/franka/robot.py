@@ -86,20 +86,24 @@ class FrankaRobot:
 
         def helper_non_blocking():
             if not self._robot.is_running_policy():
+                print("[DEBUG] Policy not running -- calling start_cartesian_impedance()")
                 self._controller_not_loaded = True
                 self._robot.start_cartesian_impedance()
                 timeout = time.time() + 5
                 while not self._robot.is_running_policy():
                     time.sleep(0.01)
                     if time.time() > timeout:
+                        print("[DEBUG] Timed out waiting for is_running_policy() -- retrying start_cartesian_impedance()")
                         self._robot.start_cartesian_impedance()
                         timeout = time.time() + 5
 
+                print("[DEBUG] Policy is now running")
                 self._controller_not_loaded = False
             try:
                 self._robot.update_desired_joint_positions(command)
-            except grpc.RpcError:
-                pass
+                print("[DEBUG] Sent update_desired_joint_positions")
+            except grpc.RpcError as e:
+                print(f"[DEBUG] update_desired_joint_positions raised grpc.RpcError: {e}")
 
         if blocking:
             if self._robot.is_running_policy():

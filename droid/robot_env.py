@@ -35,7 +35,7 @@ class RobotEnv(gym.Env):
 
             self._robot = FrankaRobot()
         else:
-            self._robot = ServerInterface(ip_address=nuc_ip)
+            self._robot = ServerInterface(ip_address=nuc_ip, launch=False)
 
         # Create Cameras
         self.camera_reader = MultiCameraWrapper(camera_kwargs)

@@ -5,7 +5,7 @@ from droid.trajectory_utils.misc import calibrate_camera
 # Make the robot env
 env = RobotEnv()
 controller = VRPolicy()
-camera_id = "39406856"  # left camera (varied_camera_1)
+camera_id = "36088355"  # right camera (varied_camera_2)
 
 print("Ready")
 calibrate_camera(env, camera_id, controller)
