@@ -40,7 +40,13 @@ CONTAINER ID   IMAGE                                      COMMAND               
 59c43770d4aa   ghcr.io/droid-dataset/droid_laptop:panda   "/app/.docker/laptop…"   23 hours ago    Exited (137) 7 seconds ago             laptop-laptop_setup-1
 ```
 
-Then restart it:
+Then start it:
+```bash
+docker start semantic-corrections       # resumes the container with its existing config
+docker exec -it semantic-corrections bash   # opens a shell into it
+```
+
+If you want to re it:
 
 ```bash
 cd /home/robin/workspace/arpit/droid/.docker/laptop

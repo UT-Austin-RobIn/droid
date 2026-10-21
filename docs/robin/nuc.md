@@ -10,6 +10,8 @@ Work from `~/droid` on the NUC.
 
 ```bash
 sudo ./scripts/setup/nuc_setup.sh
+# or
+docker compose -f docker-compose-nuc.yaml up -d 
 ```
 
 Expected container:
@@ -21,6 +23,14 @@ CONTAINER ID   IMAGE                                   COMMAND                  
 ```
 
 Then attach to the container.
+
+If container is not started but exists:
+
+```bash
+cd ~/droid/.docker/nuc
+docker start nuc-setup_nuc-1
+docker exec -it nuc-setup_nuc-1 bash
+```
 
 ## Start robot + gripper (inside container)
 
