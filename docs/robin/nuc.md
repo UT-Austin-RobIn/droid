@@ -34,7 +34,7 @@ docker exec -it nuc-setup_nuc-1 bash
 
 ## Start robot + gripper (inside container)
 
-1. `conda activate polymetis_local`
+1. `conda activate polymetis-local`
 2. `launch_robot.py robot_client=franka_hardware` or `bash /app/droid/franka/launch_robot.sh`
 3. `bash /app/droid/franka/launch_gripper.sh`
 

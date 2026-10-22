@@ -96,8 +96,9 @@ In a different terminal:
 (base) robin@robin-plato:~/workspace/openpi$ uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_droid --policy.dir=gs://openpi-assets/checkpoints/pi05_droid
 ```
 
-## Step 3 (Installing libraries required for Openpi - do it only once, unless you are recreating the container.)
+## (Optional) Step 3 (Installing libraries required for Openpi - do it only once, unless you are recreating the container.)
 
+Optional: only if a new container was created (in most cases this won't be needed since we would just be starting an existing container) 
 1. conda init
 2. source ~/.bashrc
 3. conda activate robot
@@ -106,7 +107,11 @@ In a different terminal:
 6. pip install tyro ; pip install moviepy
 7. cd /app/oopsie-tools && pip install -e .
 8. cd /app
-8. (Pi0 client) python scripts/run_openpi.py --remote_host=0.0.0.0 --remote_port=8000 --external_camera="left"
+
+## Step 4: Run the openpi policy
+```bash
+(robot) root@robin-plato:/app# python scripts/run_openpi.py --remote_host=0.0.0.0 --remote_port=8000 --external_camera="left"
+```
 
 ## Notes
 
